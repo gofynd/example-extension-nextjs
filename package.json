@@ -8,7 +8,7 @@
     "start:dev": "nodemon index.js",
     "start:prod": "NODE_ENV=production node index.js",
     "lint": "next lint",
-    "test": "jest --config jest.config.js --no-cache --detectOpenHandles --json --outputFile=./coverage/coverage.json"
+    "test": "jest --config jest.config.js"
   },
   "nodemonConfig": {
     "watch": [
@@ -21,15 +21,17 @@
     "body-parser": "^1.20.3",
     "express": "^4.21.0",
     "express-session": "^1.18.0",
-    "next": "14.2.13",
+    "next": "14.2.14",
     "passport": "^0.7.0",
     "passport-oauth2": "^1.8.0",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.25.4",
-    "@babel/preset-react": "^7.24.7",
+    "@babel/core": "^7.25.7",
+    "@babel/preset-env": "^7.25.7",
+    "@babel/preset-react": "^7.25.7",
+    "@emotion/babel-plugin": "^11.12.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "babel-jest": "^29.7.0",
