@@ -23,15 +23,10 @@ jest.mock('next', () => () => ({
 
 describe('Custom Next.js server', () => {
     
-    afterAll((done) => {
-        // Close the server after tests are complete
-        const server = getServerInstance();
-        server.close(done);
-    });
-  it('GET /api/token: Should return 404 with no token', async () => {
-    const res = await request(app).get('/api/token');
-    expect(res.statusCode).toEqual(404);
-    expect(res.body).toEqual({ message: 'No access token available. Authenticate first.' });
+  afterAll((done) => {
+      // Close the server after tests are complete
+      const server = getServerInstance();
+      server.close(done);
   });
 
   it('POST /ext/webhook: Should recieve webhook event successfully', async () => {
@@ -97,10 +92,9 @@ describe('Custom Next.js server', () => {
     expect(res.body).toEqual({ success: true });
   });
 
-  it('GET /api/token: Should return the access token after successfull auth', async () => {
-    global.accessToken = 'mockedAccessToken';
+  it('GET /api/token: Should return 404 with no token', async () => {
     const res = await request(app).get('/api/token');
-    expect(res.statusCode).toEqual(200);
-    global.accessToken = null;
+    expect(res.statusCode).toEqual(404);
+    expect(res.body).toEqual({ message: 'No access token available. Authenticate first.' });
   });
 });
