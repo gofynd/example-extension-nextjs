@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react';
-import HomePage, { getServerSideProps } from '../../pages/company/[...params]';
+import HomePage, { getServerSideProps } from '../pages/company/[...params]';
 import { useRouter } from 'next/router';
 
 // Mock the necessary modules

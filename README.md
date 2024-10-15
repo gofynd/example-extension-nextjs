@@ -53,7 +53,8 @@ Below is the structure of the project directory along with brief descriptions of
 ```.
 ├── README.md                      # Project documentation
 ├── fdk.ext.config.json            # Configuration file for FDK extension
-├── index.js                       # Entry point for the application.
+├── server.js                      # Entry point for the application.
+├── sqlite.js                      # Sqlite session storage
 ├── jest.config.mjs                # Jest configuration for unit tests
 ├── next.config.mjs                # Custom configuration for Next.js.
 ├── package-lock.json              # Lockfile for npm dependencies
@@ -61,19 +62,12 @@ Below is the structure of the project directory along with brief descriptions of
 ├── public                         # Static assets folder.
 │   ├── assets                     # Folder for images and other static files.
 └── src                            # Source code for the application.
-    ├── tests                      # Test case folder
-        ├── __mocks__              # Mock files for testing.
-        ├── __tests__              # Test files for unit and integration tests.
-    ├── app                        # Application components and layouts.
-    │   ├── fonts                  # Custom fonts used in the app.
-    │   ├── globals.css            # Global styles applied throughout the app.
     │   ├── layout.js              # Main layout component for the app.
-    │   └── page.module.css        # Module-specific styles for pages.
+    ├── tests                      # Test case folder
     └── pages                      # Next.js pages directory.
         ├── company                # Dynamic route handling for company-related pages.
         │   └── [...params].js     # Catch-all route for handling various parameters.
-        └── style                  # Styles specific to the pages.
-            └── index.css          # CSS for the index page.
+        └── index.css              # CSS for the index page.
 ```
 
 [coveralls-badge]: https://coveralls.io/repos/github/gofynd/example-extension-nextjs/badge.svg?branch=main&&kill_cache=1

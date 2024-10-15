@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { app } = require('../../../server');
+const { app,getServerInstance } = require('../../server');
 require('jest-fetch-mock').enableMocks();
 
 // Mock external dependencies like passport and OAuth2Strategy
@@ -22,6 +22,12 @@ jest.mock('next', () => () => ({
 }));
 
 describe('Custom Next.js server', () => {
+    
+    afterAll((done) => {
+        // Close the server after tests are complete
+        const server = getServerInstance();
+        server.close(done);
+    });
   it('GET /api/token: Should return 404 with no token', async () => {
     const res = await request(app).get('/api/token');
     expect(res.statusCode).toEqual(404);

@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "start": "nodemon index.js",
-    "start:dev": "nodemon index.js",
-    "start:prod": "NODE_ENV=production node index.js",
+    "start": "nodemon server.js",
+    "start:dev": "nodemon server.js",
+    "start:prod": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "test": "jest --config jest.config.js --no-cache --detectOpenHandles --json --outputFile=./coverage/coverage.json"
   },
@@ -25,7 +25,8 @@
     "passport": "^0.7.0",
     "passport-oauth2": "^1.8.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.7",

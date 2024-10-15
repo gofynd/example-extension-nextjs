@@ -6,6 +6,10 @@ const OAuth2Strategy = require('passport-oauth2').Strategy;
 const session = require('express-session');
 const next = require('next');
 const path = require("path");
+const sqlite3 = require('sqlite3').verbose();
+const sqliteInstance = new sqlite3.Database('session_storage.db');
+const SQLiteStorage = require("./sqlite");
+const sQLiteStorageInstace = new SQLiteStorage(sqliteInstance,"sqlite_prefix")
 
 // Set up environment and Next.js app
 const isDev = process.env.NODE_ENV !== 'production';
@@ -73,9 +77,9 @@ function getOAuthStrategy(companyId, applicationId) {
         callbackURL
     },
         (accessToken, refreshToken, profile, cb) => {
-            // Store access token in memory
-            accessToken = accessToken;
-            return cb(null, { accessToken });
+            sQLiteStorageInstace.set(EXTENSION_ID, accessToken).then(data =>{
+                return cb(null, { accessToken });
+            })
         }
     );
 }
@@ -140,7 +144,7 @@ async function configureWebhookSubscriber(accessToken, companyId, eventIds) {
 
 // OAuth callback route
 app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), async (req, res) => {
-    accessToken = req.user.accessToken;
+    const accessToken = await sQLiteStorageInstace.get(process.env.EXTENSION_API_KEY);    
 
     const eventData = await queryEventDetails(accessToken);
     const eventIds = eventData.event_configs.map((event) => event.id)
@@ -162,7 +166,8 @@ app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), a
 });
 
 // API route to fetch access token
-app.get('/api/token', (req, res) => {
+app.get('/api/token', async(req, res) => {
+    const accessToken = await sQLiteStorageInstace.get(process.env.EXTENSION_API_KEY);
     if (accessToken) {
         return res.json({ accessToken });
     } else {
@@ -195,12 +200,16 @@ app.all('*', (req, res) => {
 });
 
 // Prepare and start the server
-const startServer = async () => {
-    await nextApp.prepare();
+let server;
+nextApp.prepare().then(() =>{
     const PORT = process.env.FRONTEND_PORT || 3000;
-    app.listen(PORT, () => {
+    server =  app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
     });
+})
+
+const getServerInstance = () =>{
+    return server
 }
 
-module.exports = { app, startServer };
+module.exports = { app, getServerInstance };
