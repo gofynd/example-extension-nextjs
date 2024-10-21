@@ -1,6 +1,5 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import styles from './home.module.css';
 import greenDot from '../../../public/assets/green-dot.svg';
 import grayDot from '../../../public/assets/grey-dot.svg';
 import DEFAULT_NO_IMAGE from '../../../public/assets/default_icon_listing.png';
@@ -38,18 +37,18 @@ const HomePage = ({ products = [] }) => {
   };
 
   return (
-    <div className={styles.productsContainer}>
-      <div className={styles.title}>
+    <div className="products-container">
+      <div className="title">
         This is an example extension home page user interface.
       </div>
-      <div className={styles.section}>
-        <div className={styles.heading}>
+      <div className="section">
+        <div className="heading">
           <span>Example {isApplicationLaunch() ? 'Application API' : 'Platform API'}</span> :
           <a href={getDocumentPageLink()} target="_blank" rel="noopener noreferrer">
             {isApplicationLaunch() ? 'getAppProducts' : 'getProducts'}
           </a>
         </div>
-        <div className={styles.description}>
+        <div className="description">
           This is an illustrative Platform API call to fetch the list of products
           in this company. Check your extension folder’s 'server.js'
           file to know how to call Platform API and start calling API you
@@ -59,33 +58,33 @@ const HomePage = ({ products = [] }) => {
 
       <div>
         {products && products.items?.map((product, index) => (
-          <div className={`${styles.productListContainer} ${styles.flexRow}`} key={`product-${product.name}-${index}`}>
-            <Image className={styles.mrR12} src={product.is_active ? greenDot : grayDot} alt="status" height={10} width={10} />
-            <div className={`${styles.cardAvatar} ${styles.mrR12}`}>
+          <div className="product-list-container flex-row" key={`product-${product.name}-${index}`}>
+            <Image className="mr-r-12" src={product.is_active ? greenDot : grayDot} alt="status" height={10} width={10} />
+            <div className="card-avatar mr-r-12">
               <Image src={getProductProfileImage(product.media)} alt={product.name} height={100} width={100} />
             </div>
-            <div className={styles.flexColumn}>
-              <div className={styles.flexRow}>
-                <div className={styles.productName} data-testid={`product-name-${product.id}`}>
+            <div className="flex-column">
+              <div className="flex-row">
+                <div className="product-name" data-testid={`product-name-${product.id}`}>
                   {product.name}
                 </div>
-                <div className={styles.productItemCode}>|</div>
+                <div className="product-item-code">|</div>
                 {product.item_code && (
-                  <span className={styles.productItemCode}>
+                  <span className="product-item-code">
                     Item Code:
-                    <span className={styles.clRoyalBlue} data-testid={`product-item-code-${product.id}`}>
+                    <span className="cl-RoyalBlue" data-testid={`product-item-code-${product.id}`}>
                       {product.item_code}
                     </span>
                   </span>
                 )}
               </div>
               {product.brand && (
-                <div className={styles.productBrandName} data-testid={`product-brand-name-${product.id}`}>
+                <div className="product-brand-name" data-testid={`product-brand-name-${product.id}`}>
                   {product.brand.name}
                 </div>
               )}
               {product.category_slug && (
-                <div className={styles.productCategory} data-testid={`product-category-slug-${product.id}`}>
+                <div className="product-category" data-testid={`product-category-slug-${product.id}`}>
                   Category: <span>{product.category_slug}</span>
                 </div>
               )}
