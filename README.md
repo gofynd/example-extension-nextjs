@@ -51,23 +51,26 @@ After setting up your .env file, you can proceed with the Docker commands listed
 Below is the structure of the project directory along with brief descriptions of the main components:
 
 ```.
-├── README.md                      # Project documentation
-├── fdk.ext.config.json            # Configuration file for FDK extension
-├── server.js                      # Entry point for the application.
-├── sqlite.js                      # Sqlite session storage
-├── jest.config.mjs                # Jest configuration for unit tests
-├── next.config.mjs                # Custom configuration for Next.js.
-├── package-lock.json              # Lockfile for npm dependencies
-├── package.json                   # Project metadata and dependencies
-├── public                         # Static assets folder.
-│   ├── assets                     # Folder for images and other static files.
-└── src                            # Source code for the application.
-    │   ├── layout.js              # Main layout component for the app.
-    ├── tests                      # Test case folder
-    └── pages                      # Next.js pages directory.
-        ├── company                # Dynamic route handling for company-related pages.
-        │   └── [...params].js     # Catch-all route for handling various parameters.
-        └── index.css              # CSS for the index page.
+  ├── README.md                              # Project documentation
+  ├── fdk.ext.config.json                    # Configuration file for FDK extension
+  ├── server.js                              # Entry point for the application.
+  ├── sqlite.js                              # Sqlite session storage
+  ├── jest.config.mjs                        # Jest configuration for unit tests
+  ├── next.config.mjs                        # Custom configuration for Next.js.
+  ├── package-lock.json                      # Lockfile for npm dependencies
+  ├── package.json                           # Project metadata and dependencies
+  ├── public                                 # Static assets folder.
+  │   ├── assets                             # Folder for images and other static files.
+  └── src                                    # Source code for the application.
+      ├── tests                              # Test case folder
+      ├── components                         # Components of next js
+      └── index.css                          # CSS for the index page.
+      └── pages                              # Next.js pages directory.
+          ├── company                        # Dynamic route handling for company-related pages.
+              └── [id].js                    # Home page for company route
+              └── [id]                       
+                └── [application]            
+                  └── [applicationId]        # Home page for application route
 ```
 
 [coveralls-badge]: https://coveralls.io/repos/github/gofynd/example-extension-nextjs/badge.svg?branch=main&&kill_cache=1
