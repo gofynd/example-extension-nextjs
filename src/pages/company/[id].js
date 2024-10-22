@@ -6,16 +6,22 @@ import HomePage from '../../components/HomePage';
 export async function getServerSideProps(context) {
     try {
         const { id } = context.params;
-
+        const cookies = context.req.headers.cookie || '';
         // Fetch the access token using async/await
-        const tokenResponse = await fetch(`${process.env.EXTENSION_BASE_URL}/api/token`);
+        const tokenResponse = await fetch(`${process.env.EXTENSION_BASE_URL}/api/token`, {
+            method: 'GET',
+            headers: {
+                "x-company-id": id,
+                'Cookie': cookies,
+            },
+            redirect: 'follow',
+        });
         const tokenData = await tokenResponse.json();
-
         // Use the token in the Authorization header to fetch products
         const requestOptions = {
             method: 'GET',
             headers: {
-                'Authorization': tokenData.accessToken, // Use the fetched token here
+                'Authorization': tokenData.access_token, // Use the fetched token here
             },
             redirect: 'follow',
         };
@@ -24,7 +30,7 @@ export async function getServerSideProps(context) {
         const fetchCompanyProductsUrl = `${API_DOMAIN}/service/platform/catalog/v1.0/company/${id}/products/`;
         const productsResponse = await fetch(fetchCompanyProductsUrl, requestOptions);
         const products = await productsResponse.json(); // Parse the products response as JSON
-        
+
         // Return the products as props
         return {
             props: { products }, // Pass products data to the page

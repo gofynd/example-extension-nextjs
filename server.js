@@ -9,7 +9,10 @@ const path = require("path");
 const sqlite3 = require('sqlite3').verbose();
 const sqliteInstance = new sqlite3.Database('session_storage.db');
 const SQLiteStorage = require("./sqlite");
-const sQLiteStorageInstace = new SQLiteStorage(sqliteInstance,"sqlite_prefix")
+const sQLiteStorageInstace = new SQLiteStorage(sqliteInstance, "sqlite_prefix");
+const Session = require("./session/session");
+const SessionStorage = require("./session/session_storage");
+const cookieParser = require('cookie-parser');
 
 // Set up environment and Next.js app
 const isDev = process.env.NODE_ENV !== 'production';
@@ -17,31 +20,21 @@ const nextApp = next({ dev: isDev });
 const handle = nextApp.getRequestHandler(); // Next.js request handler
 
 // Extension configuration constants from environment variables
+const SESSION_COOKIE_NAME = "ext_session";
 const EXTENSION_BASEURL = process.env.EXTENSION_BASE_URL;
 const EXTENSION_ID = process.env.EXTENSION_API_KEY;
 const EXTENSION_SECRET = process.env.EXTENSION_API_SECRET;
 const EXTENSION_CLUSTER_URL = process.env.EXTENSION_CLUSTER_URL || 'https://api.fynd.com'
 
-// Extension webhook configuration
-// Add/Update this configuration as per need.
-const webhookConfig = [
-    {
-        event_category: 'company',
-        event_name: 'product',
-        event_type: 'delete',
-        version: '1',
-    },
-]
-
 // Initialize Express app
 const app = express();
-
-// In-memory storage for the access token
-let accessToken = null;
 
 // Middleware setup
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+// Middleware to parse cookies with a secret key
+app.use(cookieParser("ext.session"));
 
 // Set up session handling with express-session
 app.use(session({
@@ -74,101 +67,107 @@ function getOAuthStrategy(companyId, applicationId) {
         tokenURL: `${EXTENSION_CLUSTER_URL}/service/panel/authentication/v1.0/company/${companyId}/oauth/token`,
         clientID: EXTENSION_ID,
         clientSecret: EXTENSION_SECRET,
-        callbackURL
+        callbackURL,
+        passReqToCallback: true
     },
-        (accessToken, refreshToken, profile, cb) => {
-            sQLiteStorageInstace.set(EXTENSION_ID, accessToken).then(data =>{
-                return cb(null, { accessToken });
-            })
+        (req, accessToken, refreshToken, token, profile, cb) => {
+            req.token = token;
+            return cb(null, { accessToken });
         }
     );
 }
 
 // OAuth authentication route
-app.get('/fp/install', (req, res, next) => {
-    const state = Buffer.from(JSON.stringify("abcefg")).toString('base64');
-    passport.use(getOAuthStrategy(req.query.company_id, req.query.application_id));
-    const authenticator = passport.authenticate('oauth2', { scope: [], state });
-    authenticator(req, res, next);
+app.get('/fp/install', async (req, res, next) => {
+    try {
+        let companyId = parseInt(req.query.company_id);
+        const state = Buffer.from(JSON.stringify("abcefg")).toString('base64');
+        let extensionScope = [];
+        let session = new Session(Session.generateSessionId(true));
+        let redirectPath = req.query.redirect_path;
+        let sessionExpires = new Date(Date.now() + 900000); // 15 min
+
+        if (session.isNew) {
+            session.company_id = companyId;
+            session.scope = extensionScope;
+            session.expires = sessionExpires;
+            session.access_mode = 'online'; // Always generate online mode token for extension launch
+            session.extension_id = EXTENSION_ID;
+            session.redirect_path = redirectPath;
+        } else {
+            if (session.expires) {
+                session.expires = new Date(session.expires);
+            }
+        }
+
+        req.fdkSession = session;
+        const compCookieName = `${SESSION_COOKIE_NAME}_${companyId}`
+        res.header['x-company-id'] = companyId;
+        res.cookie(compCookieName, session.id, {
+            secure: true,
+            httpOnly: true,
+            expires: session.expires,
+            signed: true,
+            sameSite: "None"
+        });
+        session.state = state;
+        passport.use(getOAuthStrategy(req.query.company_id, req.query.application_id));
+        const authenticator = passport.authenticate('oauth2', { scope: extensionScope, state });
+        authenticator(req, res, next);
+        await SessionStorage.saveSession(session, sQLiteStorageInstace);
+    }
+    catch (error) {
+        console.error("Error during /fp/install route:", error.message);
+        res.status(500).send({ error: `Error during /fp/install route: ${error.message}` });
+    }
 });
-
-// Function to query event details
-async function queryEventDetails(accessToken) {
-    const requestOptions = {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookConfig),
-    };
-
-    const response = await fetch(
-        `${EXTENSION_CLUSTER_URL}/service/common/webhook/v1.0/events/query-event-details`,
-        requestOptions
-    );
-    return response.json(); // Return event data
-}
-
-// Function to configure webhook subscriber
-async function configureWebhookSubscriber(accessToken, companyId, eventIds) {
-    const requestOptions = {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            name: process.env.EXTENSION_API_KEY,
-            webhook_url: `${process.env.EXTENSION_BASE_URL}/ext/webhook`,
-            association: {
-                company_id: companyId,
-                criteria: 'ALL',
-            },
-            auth_meta: {
-                type: 'hmac',
-                secret: process.env.EXTENSION_API_SECRET,
-            },
-            email_id: 'dev@gofynd.com',
-            event_id: eventIds,
-            status: 'active',
-        }),
-    };
-
-    const response = await fetch(
-        `${EXTENSION_CLUSTER_URL}/service/platform/webhook/v1.0/company/${companyId}/subscriber`,
-        requestOptions
-    );
-    return response.json(); // Return subscriber config data
-}
 
 // OAuth callback route
-app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), async (req, res) => {
-    const accessToken = await sQLiteStorageInstace.get(process.env.EXTENSION_API_KEY);    
+app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), sessionMiddleware(false), async (req, res) => {
+    try {
+        if (!req.fdkSession) {
+            throw new Error("Can not complete oauth process as session not found");
+        }
 
-    const eventData = await queryEventDetails(accessToken);
-    const eventIds = eventData.event_configs.map((event) => event.id)
-    const subscriberData = await configureWebhookSubscriber(
-        accessToken,
-        req.query.company_id,
-        eventIds
-    );
+        const companyId = req.fdkSession.company_id
+        const { token } = req;
+        let sessionExpires = new Date(Date.now() + token.expires_in * 1000);
 
-    // Redirect based on company or application ID
-    const redirectUrl = req.query.application_id
-        ? `${process.env.EXTENSION_BASE_URL}/company/${req.query.company_id}/application/${req.query.application_id}`
-        : `${process.env.EXTENSION_BASE_URL}/company/${req.query.company_id}`;
+        req.fdkSession.expires = sessionExpires;
+        token.access_token_validity = sessionExpires.getTime();
+        req.fdkSession.updateToken(token);
 
-    return res.redirect(301, redirectUrl);
-});
+        await SessionStorage.saveSession(req.fdkSession, sQLiteStorageInstace);
+        const compCookieName = `${SESSION_COOKIE_NAME}_${companyId}`
+        res.cookie(compCookieName, req.fdkSession.id, {
+            secure: true,
+            httpOnly: true,
+            expires: sessionExpires,
+            signed: true,
+            sameSite: "None"
+        });
+        res.header['x-company-id'] = companyId;
 
-// API route to fetch access token
-app.get('/api/token', async(req, res) => {
-    const accessToken = await sQLiteStorageInstace.get(process.env.EXTENSION_API_KEY);
-    if (accessToken) {
-        return res.json({ accessToken });
-    } else {
-        res.status(404).json({ message: 'No access token available. Authenticate first.' });
+        // Fetch webhook event configuration for an event
+        const eventData = await fetchEventConfiguration(token.access_token);
+        const eventIds = eventData.event_configs.map((event) => event.id);
+
+        // Subscribe to a specific event
+        await configureWebhookSubscriber(
+            token.access_token,
+            req.query.company_id,
+            eventIds
+        );
+        // Redirect based on company or application ID
+        const redirectUrl = req.query.application_id
+            ? `${process.env.EXTENSION_BASE_URL}/company/${req.query.company_id}/application/${req.query.application_id}`
+            : `${process.env.EXTENSION_BASE_URL}/company/${req.query.company_id}`;
+
+        return res.redirect(301, redirectUrl);
+    }
+    catch (error) {
+        console.error("Error during /fp/auth route:", error.message);
+        res.status(500).send({ error: `Error during /fp/auth route: ${error.message}` });
     }
 });
 
@@ -182,10 +181,109 @@ app.post('/ext/webhook', (req, res) => {
         console.log(`Webhook Event: ${JSON.stringify(req.body.event)} received`)
         return res.status(200).json({ "success": true });
     } catch (err) {
-        console.log(`Error Processing ${req.body.event} Webhook`);
+        console.error(`Error Processing ${req.body.event} Webhook`);
         return res.status(500).json({ "success": false });
     }
 });
+
+// API route to fetch access token
+app.get('/api/token', sessionMiddleware(true), async (req, res) => {
+    let access_token = req.fdkSession.access_token;
+    if (access_token) {
+        return res.json({ access_token });
+    } else {
+        res.status(404).json({ message: 'No access token available. Authenticate first.' });
+    }
+});
+
+
+function sessionMiddleware(strict) {
+    return async (req, res, next) => {
+        try {
+            const companyId = req.headers['x-company-id'] || req.query['company_id'];
+            const compCookieName = `${SESSION_COOKIE_NAME}_${companyId}`
+            let sessionId = req.signedCookies[compCookieName];
+            req.fdkSession = await SessionStorage.getSession(sessionId, sQLiteStorageInstace);
+
+            if (strict && !req.fdkSession) {
+                return res.status(401).json({ "message": "unauthorized" });
+            }
+            next();
+        } catch (error) {
+            next(error);
+        }
+    };
+}
+
+// Function to query event details
+async function fetchEventConfiguration(accessToken) {
+    try {
+        // Extension webhook configuration. Add/Update this configuration as per need.
+        const webhookConfig = [
+            {
+                event_category: 'company',
+                event_name: 'product',
+                event_type: 'delete',
+                version: '1',
+            },
+        ];
+
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(webhookConfig),
+        };
+
+        const response = await fetch(
+            `${EXTENSION_CLUSTER_URL}/service/common/webhook/v1.0/events/query-event-details`,
+            requestOptions
+        );
+        return response.json(); // Return event data
+    }
+    catch (error) {
+        console.error(`Error while fetching webhook events configuration, Reason: ${error.message}`);
+    }
+}
+
+// Function to configure webhook subscriber
+async function configureWebhookSubscriber(accessToken, companyId, eventIds) {
+    try {
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: process.env.EXTENSION_API_KEY,
+                webhook_url: `${process.env.EXTENSION_BASE_URL}/ext/webhook`,
+                association: {
+                    company_id: companyId,
+                    criteria: 'ALL',
+                },
+                auth_meta: {
+                    type: 'hmac',
+                    secret: process.env.EXTENSION_API_SECRET,
+                },
+                email_id: 'dev@gofynd.com',
+                event_id: eventIds,
+                status: 'active',
+            }),
+        };
+
+        const response = await fetch(
+            `${EXTENSION_CLUSTER_URL}/service/platform/webhook/v1.0/company/${companyId}/subscriber`,
+            requestOptions
+        );
+        return response.json(); // Return subscriber config data
+    }
+    catch (error) {
+        console.error(`Error while fetching webhook subscriber configuration, Reason: ${error.message}`);
+    }
+}
 
 // Serve static files from the 'build' directory in production
 if (!isDev)
@@ -198,14 +296,14 @@ app.all('*', (req, res) => {
 
 // Prepare and start the server
 let server;
-nextApp.prepare().then(() =>{
+nextApp.prepare().then(() => {
     const PORT = process.env.FRONTEND_PORT || 3000;
-    server =  app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
     });
 })
 
-const getServerInstance = () =>{
+const getServerInstance = () => {
     return server
 }
 

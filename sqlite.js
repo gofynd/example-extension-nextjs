@@ -2,7 +2,11 @@
 
 class SQLiteStorage {
     constructor(dbClient, prefixKey) {
-        this.prefixKey = prefixKey
+        if(prefixKey) {
+            this.prefixKey = prefixKey + ":";
+        } else {
+            this.prefixKey = "";
+        }
         this.dbClient = dbClient;
         this.initializeTable();
         this.setupTTLChecker();
