@@ -154,9 +154,6 @@ app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), a
         eventIds
     );
 
-    console.log('Event Data:', eventData);
-    console.log('Subscriber Data:', subscriberData);
-
     // Redirect based on company or application ID
     const redirectUrl = req.query.application_id
         ? `${process.env.EXTENSION_BASE_URL}/company/${req.query.company_id}/application/${req.query.application_id}`
