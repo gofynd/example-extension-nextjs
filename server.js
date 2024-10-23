@@ -211,6 +211,7 @@ function sessionMiddleware(strict) {
 }
 
 // Function to configure webhook subscriber
+// Check here for available webhook events https://partners.fynd.com/help/docs/webhooks/overview
 async function configureWebhookSubscriber(accessToken, companyId) {
     try {
         const requestOptions = {
