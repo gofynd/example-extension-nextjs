@@ -92,7 +92,7 @@ describe('Custom Next.js server', () => {
     );
 
     expect(fetch).toHaveBeenNthCalledWith(2,
-      `${process.env.EXTENSION_CLUSTER_URL}/service/platform/webhook/v1.0/company/123/subscriber`,
+      `${process.env.EXTENSION_CLUSTER_URL}/service/platform/webhook/v2.0/company/123/subscriber`,
       expect.any(Object)
     );
 
