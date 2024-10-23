@@ -57,18 +57,6 @@ describe('Custom Next.js server', () => {
   });
 
   it('GET /fp/auth: Should return access token and subscribe to webhook event', async () => {
-    // Mock the fetch request for queryEventDetails
-    fetch.mockImplementationOnce(async (url) => {
-      if (url.includes('/query-event-details')) {
-        return {
-          json: async () => ({
-            event_configs: [{ id: 'mockedEventId1' }],
-          }),
-        };
-      }
-      return Promise.reject(new Error('Unknown endpoint'));
-    });
-
     // Mock the response for the /subscriber endpoint
     fetch.mockImplementationOnce(async (url) => {
       if (url.includes('/subscriber')) {
@@ -84,14 +72,9 @@ describe('Custom Next.js server', () => {
       .get(`/fp/auth?company_id=123`)
       .set('cookie', `${SESSION_COOKIE_NAME}_123=${cookie}`)
       .send();
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
 
     expect(fetch).toHaveBeenNthCalledWith(1,
-      `${process.env.EXTENSION_CLUSTER_URL}/service/common/webhook/v1.0/events/query-event-details`,
-      expect.any(Object)
-    );
-
-    expect(fetch).toHaveBeenNthCalledWith(2,
       `${process.env.EXTENSION_CLUSTER_URL}/service/platform/webhook/v2.0/company/123/subscriber`,
       expect.any(Object)
     );

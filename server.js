@@ -148,15 +148,10 @@ app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), s
         });
         res.header['x-company-id'] = companyId;
 
-        // Fetch webhook event configuration for an event
-        const eventData = await fetchEventConfiguration(token.access_token);
-        const eventIds = eventData.event_configs.map((event) => event.id);
-
         // Subscribe to a specific event
         await configureWebhookSubscriber(
             token.access_token,
             req.query.company_id,
-            eventIds
         );
         // Redirect based on company or application ID
         const redirectUrl = req.query.application_id
@@ -215,41 +210,8 @@ function sessionMiddleware(strict) {
     };
 }
 
-// Function to query event details
-async function fetchEventConfiguration(accessToken) {
-    try {
-        // Extension webhook configuration. Add/Update this configuration as per need.
-        const webhookConfig = [
-            {
-                event_category: 'company',
-                event_name: 'product',
-                event_type: 'delete',
-                version: '1',
-            },
-        ];
-
-        const requestOptions = {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(webhookConfig),
-        };
-
-        const response = await fetch(
-            `${EXTENSION_CLUSTER_URL}/service/common/webhook/v1.0/events/query-event-details`,
-            requestOptions
-        );
-        return response.json(); // Return event data
-    }
-    catch (error) {
-        console.error(`Error while fetching webhook events configuration, Reason: ${error.message}`);
-    }
-}
-
 // Function to configure webhook subscriber
-async function configureWebhookSubscriber(accessToken, companyId, eventIds) {
+async function configureWebhookSubscriber(accessToken, companyId) {
     try {
         const requestOptions = {
             method: 'POST',
