@@ -171,6 +171,7 @@ app.post('/fp/uninstall', (req, res) => {
     res.json({ success: true });
 });
 
+//TODO: Add check to make sure webhook call is coming through legit source.
 app.post('/ext/webhook', (req, res) => {
     try {
         console.log(`Webhook Event: ${JSON.stringify(req.body.event)} received`)
