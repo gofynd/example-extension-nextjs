@@ -44,7 +44,7 @@ describe('Company HomePage', () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/token')) {
         return Promise.resolve({
-          json: () => Promise.resolve({ accessToken: mockToken }),
+          json: () => Promise.resolve({ access_token: mockToken }),
         });
       } else if (url.includes('/products') || url.includes('/raw-products')) {
         return Promise.resolve({
@@ -75,7 +75,12 @@ describe('Company HomePage', () => {
 
   it('SSR: Should fetch product list for company', async () => {
     const context = {
-      params: { id: '123'}
+      params: { id: '123' },
+      req: {
+        headers: {
+          cookie: 'mockedCookie=mockedValue',
+        },
+      },
     };
 
     const result = await getServerSideProps(context);
@@ -83,10 +88,18 @@ describe('Company HomePage', () => {
 
     // Ensure the token fetch API was called correctly
     expect(global.fetch).toHaveBeenCalledWith(
-      `${process.env.EXTENSION_BASE_URL}/api/token`
+      `${process.env.EXTENSION_BASE_URL}/api/token`,
+      {
+        method: 'GET',
+        headers: {
+          "x-company-id": "123",
+          "Cookie": 'mockedCookie=mockedValue',
+        },
+        redirect: 'follow',
+      }
     );
 
-    // Ensure the products API was called with the correct URL
+    //Ensure the products API was called with the correct URL
     expect(global.fetch).toHaveBeenCalledWith(
       `${process.env.EXTENSION_CLUSTER_URL}/service/platform/catalog/v1.0/company/123/products/`,
       {
@@ -111,7 +124,7 @@ describe('Company HomePage', () => {
     global.fetch.mockImplementation(() => Promise.reject(new Error('Failed to fetch')));
 
     const context = {
-      params: { id: '123'}
+      params: { id: '123' }
     };
 
     const result = await getServerSideProps(context);

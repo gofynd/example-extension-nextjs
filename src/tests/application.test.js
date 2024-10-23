@@ -44,7 +44,7 @@ describe('Application HomePage', () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/token')) {
         return Promise.resolve({
-          json: () => Promise.resolve({ accessToken: mockToken }),
+          json: () => Promise.resolve({ access_token: mockToken }),
         });
       } else if (url.includes('/products') || url.includes('/raw-products')) {
         return Promise.resolve({
@@ -61,7 +61,7 @@ describe('Application HomePage', () => {
 
   it('It should render product list for sales channel', async () => {
     useRouter.mockReturnValue({
-      query: { params: { id: 123, applicationId:'000000000000000000000001'} },
+      query: { params: { id: 123, applicationId: '000000000000000000000001' } },
     });
     const { getByText, getByTestId } = render(<HomePage products={mockProducts} />);
 
@@ -73,13 +73,59 @@ describe('Application HomePage', () => {
     });
   });
 
+  it('SSR: Should fetch product list for application', async () => {
+    const context = {
+      params: { id: "123", applicationId: '000000000000000000000001' },
+      req: {
+        headers: {
+          cookie: 'mockedCookie=mockedValue',
+        },
+      },
+    };
+
+    const result = await getServerSideProps(context);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    // Ensure the token fetch API was called correctly
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${process.env.EXTENSION_BASE_URL}/api/token`,
+      {
+        method: 'GET',
+        headers: {
+          "x-company-id": "123",
+          "Cookie": 'mockedCookie=mockedValue',
+        },
+        redirect: 'follow',
+      }
+    );
+
+    //Ensure the products API was called with the correct URL
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${process.env.EXTENSION_CLUSTER_URL}/service/platform/catalog/v1.0/company/123/application/000000000000000000000001/raw-products/`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': mockToken,
+        },
+        redirect: 'follow',
+      }
+    );
+
+    // Ensure the response from getServerSideProps is as expected
+    expect(result).toEqual({
+      props: {
+        products: mockProducts,
+      },
+    });
+  });
+
   it('should handle errors and return empty products', async () => {
     // Mock fetch to reject
     global.fetch.mockImplementation(() => Promise.reject(new Error('Failed to fetch')));
 
     const context = {
-     params: { id: 123, applicationId:'000000000000000000000001'} 
-     }
+      params: { id: 123, applicationId: '000000000000000000000001' }
+    }
 
     const result = await getServerSideProps(context);
 

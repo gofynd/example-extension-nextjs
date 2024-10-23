@@ -10,6 +10,9 @@ module.exports = {
       '\\.(css|scss)$': 'identity-obj-proxy', // Mock CSS imports
       "\\.(jpg|jpeg|png|gif|svg)$": "<rootDir>/src/tests/__mocks__/fileMock.js"
     },
+    transformIgnorePatterns: [
+      "/node_modules/(?!uuid)" // Ignore node_modules except for uuid
+    ],
     coverageDirectory: './coverage',
     collectCoverage: true,
     collectCoverageFrom:[
