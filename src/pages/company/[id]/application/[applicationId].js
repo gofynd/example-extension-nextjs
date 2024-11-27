@@ -1,4 +1,4 @@
-const API_DOMAIN = process.env.EXTENSION_CLUSTER_URL || 'https://api.fynd.com';
+const API_DOMAIN = process.env.FP_API_DOMAIN || 'https://api.fynd.com';
 import HomePage from '../../../../components/HomePage';
 
 // Fetch server-side props for the HomePage

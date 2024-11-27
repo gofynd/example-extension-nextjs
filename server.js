@@ -24,7 +24,7 @@ const SESSION_COOKIE_NAME = "ext_session";
 const EXTENSION_BASEURL = process.env.EXTENSION_BASE_URL;
 const EXTENSION_ID = process.env.EXTENSION_API_KEY;
 const EXTENSION_SECRET = process.env.EXTENSION_API_SECRET;
-const EXTENSION_CLUSTER_URL = process.env.EXTENSION_CLUSTER_URL || 'https://api.fynd.com'
+const FP_API_DOMAIN = process.env.FP_API_DOMAIN || 'https://api.fynd.com'
 
 // Initialize Express app
 const app = express();
@@ -63,8 +63,8 @@ function getOAuthStrategy(companyId, applicationId) {
         ? `${EXTENSION_BASEURL}/fp/auth?application_id=${applicationId}`
         : `${EXTENSION_BASEURL}/fp/auth`;
     return new OAuth2Strategy({
-        authorizationURL: `${EXTENSION_CLUSTER_URL}/service/panel/authentication/v1.0/company/${companyId}/oauth/authorize`,
-        tokenURL: `${EXTENSION_CLUSTER_URL}/service/panel/authentication/v1.0/company/${companyId}/oauth/token`,
+        authorizationURL: `${FP_API_DOMAIN}/service/panel/authentication/v1.0/company/${companyId}/oauth/authorize`,
+        tokenURL: `${FP_API_DOMAIN}/service/panel/authentication/v1.0/company/${companyId}/oauth/token`,
         clientID: EXTENSION_ID,
         clientSecret: EXTENSION_SECRET,
         callbackURL,
@@ -242,7 +242,7 @@ async function configureWebhookSubscriber(accessToken, companyId) {
         };
 
         const response = await fetch(
-            `${EXTENSION_CLUSTER_URL}/service/platform/webhook/v2.0/company/${companyId}/subscriber`,
+            `${FP_API_DOMAIN}/service/platform/webhook/v2.0/company/${companyId}/subscriber`,
             requestOptions
         );
         return response.json(); // Return subscriber config data
