@@ -101,7 +101,7 @@ describe('Company HomePage', () => {
 
     //Ensure the products API was called with the correct URL
     expect(global.fetch).toHaveBeenCalledWith(
-      `${process.env.EXTENSION_CLUSTER_URL}/service/platform/catalog/v1.0/company/123/products/`,
+      `${process.env.FP_API_DOMAIN}/service/platform/catalog/v1.0/company/123/products/`,
       {
         method: 'GET',
         headers: {

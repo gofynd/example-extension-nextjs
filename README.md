@@ -17,7 +17,7 @@ This project outlines the development process for a Fynd extension that displays
 ## Install Template Locally
 To initialize your extension template locally, run the following command:
 ```shell
-fdk extension init --template <TODO>
+fdk extension init --template node-next
 ```
 Enter your preferred extension name and type, and you are all set.
 
