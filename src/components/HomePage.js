@@ -1,9 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import greenDot from '../../public/assets/green-dot.svg';
-import grayDot from '../../public/assets/grey-dot.svg';
 import DEFAULT_NO_IMAGE from '../../public/assets/default_icon_listing.png';
-import Image from 'next/image';
 
 // Base URL for API requests
 const documentationUrl = 'https://api.fynd.com';
@@ -58,9 +55,9 @@ const HomePage = ({ products = [] }) => {
       <div>
         {products && products.items?.map((product, index) => (
           <div className="product-list-container flex-row" key={`product-${product.name}-${index}`}>
-            <Image className="mr-r-12" src={product.is_active ? greenDot : grayDot} alt="status" height={10} width={10} />
+            <img className="mr-r-12" src={product.is_active ? '/assets/green-dot.svg' : '/assets/grey-dot.svg'} alt="status" height={10} width={10} />
             <div className="card-avatar mr-r-12">
-              <Image src={getProductProfileImage(product.media)} alt={product.name} height={100} width={100} />
+              <img src={getProductProfileImage(product.media)} alt={product.name} height={100} width={100} />
             </div>
             <div className="flex-column">
               <div className="flex-row">
