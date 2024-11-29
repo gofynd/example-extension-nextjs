@@ -185,8 +185,10 @@ function verifySignature(req, res, next) {
         }
         next();
     } catch (error) {
-        console.error("Error verifying signature", error);
-        return res.status(500).json({ "error": "Internal server error" });
+        return res.status(403).json({ 
+            "error": "InvalidSignature",
+            "message": "The request signature we calculated does not match the signature you provided."
+         });
     }
 }
 
