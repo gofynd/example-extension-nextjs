@@ -1,4 +1,4 @@
-const { EXTENSION_CLUSTER_URL } = require('./../../config');
+const { FP_API_DOMAIN } = require('./../../config');
 const { getSessionFromRequest } = require('./../../session/sessionUtils');
 
 async function getProducts(companyId, req, applicationId = null) {
@@ -26,9 +26,9 @@ async function getProducts(companyId, req, applicationId = null) {
     // Determine the API endpoint based on whether applicationId is provided
     let fetchProductsUrl;
     if (applicationId) {
-      fetchProductsUrl = `${EXTENSION_CLUSTER_URL}/service/platform/catalog/v1.0/company/${companyId}/application/${applicationId}/raw-products/`;
+      fetchProductsUrl = `${FP_API_DOMAIN}/service/platform/catalog/v1.0/company/${companyId}/application/${applicationId}/raw-products/`;
     } else {
-      fetchProductsUrl = `${EXTENSION_CLUSTER_URL}/service/platform/catalog/v1.0/company/${companyId}/products/`;
+      fetchProductsUrl = `${FP_API_DOMAIN}/service/platform/catalog/v1.0/company/${companyId}/products/`;
     }
 
     // Fetch products

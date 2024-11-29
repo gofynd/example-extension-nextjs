@@ -1,3 +1,4 @@
+const API_DOMAIN = process.env.FP_API_DOMAIN || 'https://api.fynd.com';
 import HomePage from '../../../../components/HomePage';
 import getProducts from '../../../../utils/getProducts';
 

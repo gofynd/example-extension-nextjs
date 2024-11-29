@@ -26,7 +26,7 @@ const {
     EXTENSION_BASEURL,
     EXTENSION_ID,
     EXTENSION_SECRET,
-    EXTENSION_CLUSTER_URL,
+    FP_API_DOMAIN
 } = config;
 
 // Initialize Express app
@@ -66,8 +66,8 @@ function getOAuthStrategy(companyId, applicationId) {
         ? `${EXTENSION_BASEURL}/fp/auth?application_id=${applicationId}`
         : `${EXTENSION_BASEURL}/fp/auth`;
     return new OAuth2Strategy({
-        authorizationURL: `${EXTENSION_CLUSTER_URL}/service/panel/authentication/v1.0/company/${companyId}/oauth/authorize`,
-        tokenURL: `${EXTENSION_CLUSTER_URL}/service/panel/authentication/v1.0/company/${companyId}/oauth/token`,
+        authorizationURL: `${FP_API_DOMAIN}/service/panel/authentication/v1.0/company/${companyId}/oauth/authorize`,
+        tokenURL: `${FP_API_DOMAIN}/service/panel/authentication/v1.0/company/${companyId}/oauth/token`,
         clientID: EXTENSION_ID,
         clientSecret: EXTENSION_SECRET,
         callbackURL,
@@ -86,7 +86,7 @@ app.get('/fp/install', async (req, res, next) => {
         let companyId = parseInt(req.query.company_id);
         const state = Buffer.from(JSON.stringify("abcefg")).toString('base64');
         let extensionScope = [];
-        let session = new Session(Session.generateSessionId(true));
+        let session = new Session(Session.generateSessionId());
         let redirectPath = req.query.redirect_path;
         let sessionExpires = new Date(Date.now() + 900000); // 15 min
 
@@ -249,7 +249,7 @@ async function configureWebhookSubscriber(accessToken, companyId) {
         };
 
         const response = await fetch(
-            `${EXTENSION_CLUSTER_URL}/service/platform/webhook/v2.0/company/${companyId}/subscriber`,
+            `${FP_API_DOMAIN}/service/platform/webhook/v2.0/company/${companyId}/subscriber`,
             requestOptions
         );
         return response.json(); // Return subscriber config data
