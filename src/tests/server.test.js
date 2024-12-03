@@ -4,7 +4,7 @@ jest.mock('next', () => () => ({
 }));
 
 const request = require('supertest');
-const { app } = require('../../server');
+const { app, getServerInstance } = require('../../server');
 const SESSION_COOKIE_NAME = 'ext_session';
 const cookieParser = require('cookie-parser');
 const cookie = require('cookie');
@@ -64,6 +64,13 @@ jest.mock('crypto-js/hmac-sha256', () => {
 });
 
 describe('Custom Next.js server', () => {
+
+  afterAll((done) => {
+    // Close the server after tests are complete
+    const server = getServerInstance();
+    server.close(done);
+  });
+
   let sessionCookieValue = '';
 
   it('POST /ext/webhook: Should receive webhook event successfully', async () => {
