@@ -2,6 +2,7 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react';
 import HomePage, { getServerSideProps } from '../pages/company/[id]/application/[applicationId]'
 import { useRouter } from 'next/router';
+import { getSessionFromRequest } from '../../session/sessionUtils';
 
 // Mock the necessary modules
 jest.mock('next/router', () => ({
@@ -13,6 +14,10 @@ jest.mock('next/image', () => {
     return <img {...props} alt={props.alt} />;
   };
 });
+
+jest.mock('../../session/sessionUtils', () => ({
+  getSessionFromRequest: jest.fn(),
+}));
 
 describe('Application HomePage', () => {
   const mockToken = 'mocked-token';
@@ -40,36 +45,29 @@ describe('Application HomePage', () => {
   };
 
   beforeEach(() => {
-    // Mock global fetch function
-    global.fetch = jest.fn((url) => {
-      if (url.includes('/api/token')) {
-        return Promise.resolve({
-          json: () => Promise.resolve({ access_token: mockToken }),
-        });
-      } else if (url.includes('/products') || url.includes('/raw-products')) {
-        return Promise.resolve({
-          json: () => Promise.resolve(mockProducts),
-        });
-      }
-      return Promise.reject('Unknown API call');
-    });
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+
+    const mockSession = { access_token: mockToken };
+    getSessionFromRequest.mockResolvedValue(mockSession);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockProducts),
+    });
   });
 
-  it('It should render product list for sales channel', async () => {
+  it('should render product list for application', async () => {
     useRouter.mockReturnValue({
-      query: { params: { id: 123, applicationId: '000000000000000000000001' } },
+      query: { applicationId: '000000000000000000000001' },
     });
+
     const { getByText, getByTestId } = render(<HomePage products={mockProducts} />);
 
     await waitFor(() => {
       expect(getByTestId('product-name-1')).toBeInTheDocument();
       expect(getByTestId('product-item-code-1')).toBeInTheDocument();
-      expect(getByText('Brand A')).toBeInTheDocument();
-      expect(getByText('Category A')).toBeInTheDocument();
+      expect(getByTestId('product-brand-name-1')).toHaveTextContent('Brand A');
+      expect(getByTestId('product-category-slug-1')).toHaveTextContent('Category: Category A');
     });
   });
 
@@ -84,34 +82,20 @@ describe('Application HomePage', () => {
     };
 
     const result = await getServerSideProps(context);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
 
-    // Ensure the token fetch API was called correctly
-    expect(global.fetch).toHaveBeenCalledWith(
-      `${process.env.EXTENSION_BASE_URL}/api/token`,
-      {
-        method: 'GET',
-        headers: {
-          "x-company-id": "123",
-          "Cookie": 'mockedCookie=mockedValue',
-        },
-        redirect: 'follow',
-      }
-    );
+    expect(getSessionFromRequest).toHaveBeenCalledWith(context.req, '123');
 
-    //Ensure the products API was called with the correct URL
     expect(global.fetch).toHaveBeenCalledWith(
       `${process.env.FP_API_DOMAIN}/service/platform/catalog/v1.0/company/123/application/000000000000000000000001/raw-products/`,
       {
         method: 'GET',
         headers: {
-          'Authorization': mockToken,
+          Authorization: mockToken,
         },
         redirect: 'follow',
       }
     );
 
-    // Ensure the response from getServerSideProps is as expected
     expect(result).toEqual({
       props: {
         products: mockProducts,
@@ -120,21 +104,19 @@ describe('Application HomePage', () => {
   });
 
   it('should handle errors and return empty products', async () => {
-    // Mock fetch to reject
-    global.fetch.mockImplementation(() => Promise.reject(new Error('Failed to fetch')));
+    getSessionFromRequest.mockResolvedValue(null);
 
     const context = {
-      params: { id: 123, applicationId: '000000000000000000000001' }
-    }
+      params: { id: '123', applicationId: '000000000000000000000001' },
+      req: {},
+    };
 
     const result = await getServerSideProps(context);
 
-    // Ensure the result has an empty products array in case of an error
     expect(result).toEqual({
       props: {
         products: [],
       },
     });
   });
-
 });

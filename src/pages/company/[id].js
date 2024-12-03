@@ -1,52 +1,24 @@
-const API_DOMAIN = process.env.FP_API_DOMAIN || 'https://api.fynd.com';
 import HomePage from '../../components/HomePage';
+import getProducts from '../../utils/getProducts';
 
-
-// Fetch server-side props for the HomePage
 export async function getServerSideProps(context) {
-    try {
-        const { id } = context.params;
-        const cookies = context.req.headers.cookie || '';
-        // Fetch the access token using async/await
-        const tokenResponse = await fetch(`${process.env.EXTENSION_BASE_URL}/api/token`, {
-            method: 'GET',
-            headers: {
-                "x-company-id": id,
-                'Cookie': cookies,
-            },
-            redirect: 'follow',
-        });
-        const tokenData = await tokenResponse.json();
-        // Use the token in the Authorization header to fetch products
-        const requestOptions = {
-            method: 'GET',
-            headers: {
-                'Authorization': tokenData.access_token, // Use the fetched token here
-            },
-            redirect: 'follow',
-        };
+  try {
+    const { id } = context.params;
+    const products = await getProducts(id, context.req);
 
-        // Fetch products based on whether an application ID is provided
-        const fetchCompanyProductsUrl = `${API_DOMAIN}/service/platform/catalog/v1.0/company/${id}/products/`;
-        const productsResponse = await fetch(fetchCompanyProductsUrl, requestOptions);
-        const products = await productsResponse.json(); // Parse the products response as JSON
+    return {
+      props: { products },
+    };
+  } catch (error) {
+    console.error('Error fetching products:', error);
 
-        // Return the products as props
-        return {
-            props: { products }, // Pass products data to the page
-        };
-
-    } catch (error) {
-        console.error('Error fetching data:', error);
-
-        // Return fallback props in case of error
-        return {
-            props: {
-                products: [], // Return an empty array if there's an error
-            },
-        };
-    }
+    // Return fallback props in case of error
+    return {
+      props: {
+        products: [], // Return an empty array if there's an error
+      },
+    };
+  }
 }
-
 
 export default HomePage;

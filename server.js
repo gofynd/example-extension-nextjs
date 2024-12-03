@@ -6,12 +6,13 @@ const OAuth2Strategy = require('passport-oauth2').Strategy;
 const session = require('express-session');
 const next = require('next');
 const path = require("path");
-const sqlite3 = require('sqlite3').verbose();
-const sqliteInstance = new sqlite3.Database('session_storage.db');
-const SQLiteStorage = require("./sqlite");
-const sQLiteStorageInstace = new SQLiteStorage(sqliteInstance, "sqlite_prefix");
+const hmacSHA256 = require("crypto-js/hmac-sha256");
+
+const config = require('./config');
 const Session = require("./session/session");
 const SessionStorage = require("./session/session_storage");
+const { getSessionFromRequest } = require('./session/sessionUtils.js');
+
 const cookieParser = require('cookie-parser');
 
 // Set up environment and Next.js app
@@ -20,11 +21,13 @@ const nextApp = next({ dev: isDev });
 const handle = nextApp.getRequestHandler(); // Next.js request handler
 
 // Extension configuration constants from environment variables
-const SESSION_COOKIE_NAME = "ext_session";
-const EXTENSION_BASEURL = process.env.EXTENSION_BASE_URL;
-const EXTENSION_ID = process.env.EXTENSION_API_KEY;
-const EXTENSION_SECRET = process.env.EXTENSION_API_SECRET;
-const FP_API_DOMAIN = process.env.FP_API_DOMAIN || 'https://api.fynd.com'
+const {
+    SESSION_COOKIE_NAME,
+    EXTENSION_BASEURL,
+    EXTENSION_ID,
+    EXTENSION_SECRET,
+    FP_API_DOMAIN
+} = config;
 
 // Initialize Express app
 const app = express();
@@ -83,7 +86,7 @@ app.get('/fp/install', async (req, res, next) => {
         let companyId = parseInt(req.query.company_id);
         const state = Buffer.from(JSON.stringify("abcefg")).toString('base64');
         let extensionScope = [];
-        let session = new Session(Session.generateSessionId(true));
+        let session = new Session(Session.generateSessionId());
         let redirectPath = req.query.redirect_path;
         let sessionExpires = new Date(Date.now() + 900000); // 15 min
 
@@ -114,7 +117,7 @@ app.get('/fp/install', async (req, res, next) => {
         passport.use(getOAuthStrategy(req.query.company_id, req.query.application_id));
         const authenticator = passport.authenticate('oauth2', { scope: extensionScope, state });
         authenticator(req, res, next);
-        await SessionStorage.saveSession(session, sQLiteStorageInstace);
+        await SessionStorage.saveSession(session);
     }
     catch (error) {
         console.error("Error during /fp/install route:", error.message);
@@ -137,7 +140,7 @@ app.get('/fp/auth', passport.authenticate('oauth2', { failureRedirect: '/' }), s
         token.access_token_validity = sessionExpires.getTime();
         req.fdkSession.updateToken(token);
 
-        await SessionStorage.saveSession(req.fdkSession, sQLiteStorageInstace);
+        await SessionStorage.saveSession(req.fdkSession);
         const compCookieName = `${SESSION_COOKIE_NAME}_${companyId}`
         res.cookie(compCookieName, req.fdkSession.id, {
             secure: true,
@@ -171,8 +174,25 @@ app.post('/fp/uninstall', (req, res) => {
     res.json({ success: true });
 });
 
-//TODO: Add check to make sure webhook call is coming through legit source.
-app.post('/ext/webhook', (req, res) => {
+function verifySignature(req, res, next) {
+    try {
+        const reqSignature = req.headers['x-fp-signature'];
+        const { body } = req;
+        const calcSignature = hmacSHA256(JSON.stringify(body), EXTENSION_SECRET).toString();
+
+        if (reqSignature !== calcSignature) {
+            return res.status(403).json({ "error": "Invalid signature" });
+        }
+        next();
+    } catch (error) {
+        return res.status(403).json({ 
+            "error": "InvalidSignature",
+            "message": "The request signature we calculated does not match the signature you provided."
+         });
+    }
+}
+
+app.post('/ext/webhook', verifySignature, (req, res) => {
     try {
         console.log(`Webhook Event: ${JSON.stringify(req.body.event)} received`)
         return res.status(200).json({ "success": true });
@@ -182,32 +202,19 @@ app.post('/ext/webhook', (req, res) => {
     }
 });
 
-// API route to fetch access token
-app.get('/api/token', sessionMiddleware(true), async (req, res) => {
-    let access_token = req.fdkSession.access_token;
-    if (access_token) {
-        return res.json({ access_token });
-    } else {
-        res.status(404).json({ message: 'No access token available. Authenticate first.' });
-    }
-});
-
-
 function sessionMiddleware(strict) {
     return async (req, res, next) => {
-        try {
-            const companyId = req.headers['x-company-id'] || req.query['company_id'];
-            const compCookieName = `${SESSION_COOKIE_NAME}_${companyId}`
-            let sessionId = req.signedCookies[compCookieName];
-            req.fdkSession = await SessionStorage.getSession(sessionId, sQLiteStorageInstace);
-
-            if (strict && !req.fdkSession) {
-                return res.status(401).json({ "message": "unauthorized" });
-            }
-            next();
-        } catch (error) {
-            next(error);
+      try {
+        const companyId = req.headers['x-company-id'] || req.query['company_id'];
+        req.fdkSession = await getSessionFromRequest(req, companyId);
+  
+        if (strict && !req.fdkSession) {
+          return res.status(401).json({ message: 'Unauthorized' });
         }
+        next();
+      } catch (error) {
+        next(error);
+      }
     };
 }
 

@@ -1,22 +1,24 @@
 'use strict';
 const Session = require("./session");
 
+const sQLiteStorageInstance = require('./../storage/sqliteInstance');
+
 class SessionStorage {
     constructor() {
     }
 
-    static async saveSession(session, sQLiteStorageInstace) {
+    static async saveSession(session) {
         if(session.expires) {
             let ttl = (new Date() - session.expires) / 1000;
             ttl = Math.abs(Math.round(Math.min(ttl, 0)));
-            return sQLiteStorageInstace.setex(session.id, JSON.stringify(session.toJSON()), ttl);
+            return sQLiteStorageInstance.setex(session.id, JSON.stringify(session.toJSON()), ttl);
         } else {
-            return sQLiteStorageInstace.set(session.id, JSON.stringify(session.toJSON()));
+            return sQLiteStorageInstance.set(session.id, JSON.stringify(session.toJSON()));
         }
     }
 
-    static async getSession(sessionId, sQLiteStorageInstace) {
-        let session = await sQLiteStorageInstace.get(sessionId);
+    static async getSession(sessionId) {
+        let session = await sQLiteStorageInstance.get(sessionId);
         if(session) {
             session = JSON.parse(session);
             session = Session.cloneSession(sessionId, session, false);
@@ -27,8 +29,8 @@ class SessionStorage {
         return session;
     }
 
-    static async deleteSession(sessionId, sQLiteStorageInstace) {
-        return sQLiteStorageInstace.del(sessionId);
+    static async deleteSession(sessionId) {
+        return sQLiteStorageInstance.del(sessionId);
     }
 }
 

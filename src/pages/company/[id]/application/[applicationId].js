@@ -1,45 +1,17 @@
 const API_DOMAIN = process.env.FP_API_DOMAIN || 'https://api.fynd.com';
 import HomePage from '../../../../components/HomePage';
+import getProducts from '../../../../utils/getProducts';
 
-// Fetch server-side props for the HomePage
 export async function getServerSideProps(context) {
   try {
-    const { id, applicationId } = context.params;
+    const { id: companyId, applicationId } = context.params;
+    const products = await getProducts(companyId, context.req, applicationId);
 
-    const cookies = context.req.headers.cookie || '';
-    // Fetch the access token using async/await
-    const tokenResponse = await fetch(`${process.env.EXTENSION_BASE_URL}/api/token`, {
-      method: 'GET',
-      headers: {
-        "x-company-id": id,
-        'Cookie': cookies,
-      },
-      redirect: 'follow',
-    });
-    const tokenData = await tokenResponse.json();
-
-    // Use the token in the Authorization header to fetch products
-    const requestOptions = {
-      method: 'GET',
-      headers: {
-        'Authorization': tokenData.access_token, // Use the fetched token here
-      },
-      redirect: 'follow',
-    };
-
-    // Fetch products based on whether an application ID is provided
-    const fetchApplicationProductsUrl = `${API_DOMAIN}/service/platform/catalog/v1.0/company/${id}/application/${applicationId}/raw-products/`;
-
-    const productsResponse = await fetch(fetchApplicationProductsUrl, requestOptions);
-    const products = await productsResponse.json(); // Parse the products response as JSON
-
-    // Return the products as props
     return {
       props: { products }, // Pass products data to the page
     };
-
   } catch (error) {
-    console.error('Error fetching data:', error);
+    console.error('Error fetching products:', error);
 
     // Return fallback props in case of error
     return {

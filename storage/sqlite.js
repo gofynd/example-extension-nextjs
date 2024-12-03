@@ -25,26 +25,38 @@ class SQLiteStorage {
 
     setupTTLChecker() {
         if (!this.ttlCheckerInterval) {
-            this.ttlCheckerInterval =
+            this.ttlCheckerInterval = 
                 setInterval(async () => {
                     const now = Math.floor(Date.now() / 1000);
                     const deleteQuery = `DELETE FROM storage WHERE ttl < ? AND ttl IS NOT NULL`;
                     await this.dbClient.run(deleteQuery, [now]);
-                }, 10000);
+                }, 86400000); // 24 hours in milliseconds
         }
     }
 
     async get(key) {
         const row = await new Promise((resolve, reject) => {
-            this.dbClient.get(`SELECT value FROM storage WHERE key = ?`, [this.prefixKey + key], (err, results) => {
+            this.dbClient.get(`SELECT value, ttl FROM storage WHERE key = ?`, [this.prefixKey + key], (err, result) => {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(results);
+                    resolve(result);
                 }
             });
         });
-        return row ? row.value : null;
+
+        if (!row) {
+            return null;
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        if (row.ttl !== null && row.ttl < now) {
+            // TTL has expired; delete the key and return null
+            await this.del(key);
+            return null;
+        } else {
+            return row.value;
+        }
     }
 
     async set(key, value) {
