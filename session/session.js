@@ -23,6 +23,7 @@ class Session {
     static cloneSession(id, session, isNew=true) {
         let newSession = new Session(id, isNew);
         Object.assign(newSession, session);
+        newSession.id = id;
         return newSession;
     }
 
